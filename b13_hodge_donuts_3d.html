@@ -1,0 +1,264 @@
+<title>二つのドーナツの立体模型</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Shippori+Mincho+B1:wght@600;800&family=BIZ+UDPGothic:wght@400;700&family=IBM+Plex+Mono:wght@500;600&display=swap">
+<style>
+/* 上に立体模型（ドーナツ二つ。左で輪 a₁・b₁ を一周、右に λ 倍の影が巻きつく）、下に説明。ドラッグで回せる */
+:root{
+  --bg:#eef0ec; --panel:#f8f9f6; --ink:#1d2622; --muted:#5d6a63; --rule:#c9d0ca;
+  --pos:#1f5fa8; --neg:#b0452a; --glow:#d9a514; --mesh:#9aa79f;
+  --display:"Shippori Mincho B1","Hiragino Mincho ProN","Yu Mincho",serif;
+  --body:"BIZ UDPGothic","Hiragino Sans","Yu Gothic",system-ui,sans-serif;
+  --mono:"IBM Plex Mono",ui-monospace,Menlo,monospace;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#141a17; --panel:#1c2420; --ink:#e4ebe6; --muted:#9aa8a0; --rule:#34403a;
+  --pos:#6fa8ec; --neg:#ec8a6c; --glow:#f0c53a; --mesh:#56645c; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#141a17; --panel:#1c2420; --ink:#e4ebe6; --muted:#9aa8a0; --rule:#34403a;
+  --pos:#6fa8ec; --neg:#ec8a6c; --glow:#f0c53a; --mesh:#56645c; color-scheme:dark}
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--ink);font-family:var(--body);margin:0;
+  padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:20px 28px}
+.wrap{max-width:900px;margin:0 auto;display:grid;gap:14px}
+h1{font-family:var(--display);font-weight:800;font-size:clamp(1.4rem,4vw,2rem);margin:0;text-wrap:balance;letter-spacing:.02em}
+.figbox{background:var(--panel);border:1px solid var(--rule);border-radius:10px;padding:10px;display:grid;gap:10px;justify-items:center}
+canvas{width:100%;max-width:860px;height:auto;display:block;touch-action:none;cursor:grab}
+canvas:active{cursor:grabbing}
+.controls{display:flex;flex-wrap:wrap;gap:8px;align-items:center;justify-content:center}
+.group{display:flex;gap:4px;align-items:center;flex-wrap:wrap}
+.group span{font-size:.8rem;color:var(--muted);margin-right:4px}
+button{font:inherit;font-family:var(--body);font-weight:700;color:var(--ink);background:var(--panel);border:1px solid var(--rule);border-radius:8px;padding:6px 10px;cursor:pointer}
+button.num{font-family:var(--mono);font-weight:600}
+button:hover{border-color:var(--muted)}
+button:focus-visible{outline:2px solid var(--pos);outline-offset:2px}
+button.on{background:var(--ink);color:var(--bg);border-color:var(--ink)}
+.status{font-weight:700;min-height:1.6em;text-align:center;font-variant-numeric:tabular-nums}
+.status em{font-style:normal;padding:2px 8px;border-radius:4px;background:var(--glow);color:#1d2622}
+.status em.no{background:var(--neg);color:#fff}
+.coef{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:6px;width:100%;max-width:640px}
+@media (max-width:520px){.coef{grid-template-columns:repeat(3,minmax(0,1fr))}}
+.coef div{border:1px solid var(--rule);border-radius:8px;padding:6px 4px;text-align:center;background:var(--bg)}
+.coef small{display:block;font-family:var(--mono);font-size:.75rem;color:var(--muted)}
+.coef b{font-family:var(--mono);font-size:1.2rem;font-variant-numeric:tabular-nums}
+.hint{font-size:.8rem;color:var(--muted)}
+.text{line-height:1.8;max-width:66ch;margin:0 auto;display:grid;gap:10px}
+.text p{margin:0}
+.k{font-size:.8rem;color:var(--muted);letter-spacing:.04em}
+</style>
+
+<div class="wrap">
+  <h1>二つのドーナツの立体模型</h1>
+
+  <div class="figbox">
+    <canvas id="cv" width="860" height="440" aria-label="二つのドーナツの立体模型。左で輪を一周し、右にλ倍の影が巻きつく"></canvas>
+    <div class="hint">ドラッグで向きを変えられます</div>
+    <div class="status" id="st"></div>
+    <div class="coef" id="coef"></div>
+    <div class="controls">
+      <div class="group"><span>λ</span>
+        <button class="num" data-k="0">1</button>
+        <button class="num" data-k="1">P1</button>
+        <button class="num" data-k="2">1+P1</button>
+        <button class="num" data-k="3">2+P1</button>
+        <button class="num" data-k="4">2−P1</button>
+        <button class="num" data-k="5">閉じない例</button>
+      </div>
+      <div class="group">
+        <button id="play">止める</button>
+        <button id="step">一歩</button>
+        <button id="reset">最初から</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="text">
+    <p>正方形の向かい合う辺を貼り合わせたドーナツを、そのまま立体にしました。番地は横・縦とも 3120 で一周です。横の輪 a はドーナツの穴をまわる輪（青）、縦の輪 b はチューブをまわる輪（赤）になります。</p>
+    <p>左のドーナツで a₁ を一周し、続けて b₁ を一周します。そのあいだ、右のドーナツには λ 倍の影を引きます。λ = m + n·P1 の P1 は「入れ替えと裏返し」の一歩（四分の一周、780 番地）です。a₁ の一周で、右では穴まわりに m 周・チューブまわりに n 周する線が巻きつきます。b₁ の一周では、P1 を一度かけた向き（−n 周と m 周）の線が巻きつきます。</p>
+    <p>m と n が整数なら、影は出発点に着地して閉じ、ドーナツに巻きついた結び目の輪になります。閉じない例では、線は出発点に戻らずに止まります。</p>
+    <p>下の 6 つの整数は、閉じた影の組が二つのドーナツの穴（輪を 2 本選んで張る面 6 つ）をどれだけ覆うかです。値は (1, −n, m, −m, −n, m·m + n·n) で、平らな正方形の図と同じです。</p>
+    <p><span class="k">［計算］</span>どの λ の影の組も、四つの部分図形の整数の組で書けます。四つとは、左のドーナツ × 点、点 × 右のドーナツ、λ = 1 の影、λ = P1 の影です。m, n = −3〜3 で突き合わせました。</p>
+    <p><span class="k">［知識］</span>ここは解決済みの段（レフシェッツの定理）です。</p>
+  </div>
+</div>
+
+<script>
+(function(){
+  var M = 3120, T = 130, L = 24, B0 = 0;
+  var lams = [
+    {name:'1', m:1, n:0}, {name:'P1', m:0, n:1}, {name:'1+P1', m:1, n:1},
+    {name:'2+P1', m:2, n:1}, {name:'2−P1', m:2, n:-1}, {name:'閉じない例', open:true}
+  ];
+  function times(a, k){ var r = 0, kk = k < 0 ? -k : k; for (var i = 0; i < kk; i++) r += a; return k < 0 ? -r : r; }
+  function wrap(v){ while (v >= M) v -= M; while (v < 0) v += M; return v; }
+
+  var cv = document.getElementById('cv'), cx = cv.getContext('2d');
+  var cur = 3, playing = true, tick = 0, left, right, lpts, rpts, stepA, stepB;
+  var yaw = 0.5, pitch = 0.95, autoSpin = true;
+
+  function css(n){ return getComputedStyle(document.documentElement).getPropertyValue(n).trim(); }
+
+  function setup(){
+    var lam = lams[cur];
+    if (lam.open){ stepA = [15, 0]; stepB = [0, 15]; }
+    else { stepA = [times(L, lam.m), times(L, lam.n)]; stepB = [times(L, -lam.n), times(L, lam.m)]; }
+    tick = 0; left = [B0, B0]; right = [B0, B0];
+    lpts = [[B0, B0, 0]]; rpts = [[B0, B0, 0]];   // [番地 u, 番地 v, 区間 0=a / 1=b]
+    table(); draw();
+  }
+
+  // 番地は足して 3120 で折り返す（整数）。立体に置くのは描く直前だけ
+  function advance(){
+    if (tick >= T + T) return;
+    var ph = tick < T ? 0 : 1;
+    var dl = ph === 0 ? [L, 0] : [0, L], dr = ph === 0 ? stepA : stepB;
+    left = [wrap(left[0] + dl[0]), wrap(left[1] + dl[1])];
+    right = [wrap(right[0] + dr[0]), wrap(right[1] + dr[1])];
+    lpts.push([left[0], left[1], ph]); rpts.push([right[0], right[1], ph]);
+    tick++;
+  }
+
+  // ---- ここから観察者側の表示（番地 → 角 → 立体 → 画面） ----
+  var RR = 1.0, rr = 0.42;
+  function torus(u, v){
+    var a = u / M * Math.PI * 2, b = v / M * Math.PI * 2;
+    var w = RR + rr * Math.cos(b);
+    return [w * Math.cos(a), w * Math.sin(a), rr * Math.sin(b)];
+  }
+  function view(p){
+    var cy = Math.cos(yaw), sy = Math.sin(yaw), cp = Math.cos(pitch), sp = Math.sin(pitch);
+    var x = p[0] * cy - p[1] * sy, y = p[0] * sy + p[1] * cy, z = p[2];
+    var y2 = y * cp - z * sp, z2 = y * sp + z * cp;
+    return [x, z2, y2];   // 画面の横、画面の縦、奥行き（大きいほど手前）
+  }
+  function screen(q, ox, oy, sc){ return [ox + q[0] * sc, oy - q[1] * sc]; }
+
+  function draw(){
+    var W = cv.width, H = cv.height;
+    cx.clearRect(0, 0, W, H); cx.fillStyle = css('--panel'); cx.fillRect(0, 0, W, H);
+    var sc = Math.min(W / 6.6, H / 3.6);
+    var oyy = H * 0.47;
+    var segs = [];
+    addDonut(segs, W * 0.25, oyy, sc, lpts, left, '左のドーナツ：a₁ を一周、続けて b₁');
+    addDonut(segs, W * 0.75, oyy, sc, rpts, right, '右のドーナツ：λ 倍の影');
+    segs.sort(function(a, b){ return a.z - b.z; });
+    for (var i = 0; i < segs.length; i++) segs[i].draw();
+    cx.fillStyle = css('--muted'); cx.font = '600 20px "IBM Plex Mono", ui-monospace, monospace'; cx.textAlign = 'center';
+    cx.fillText('×λ →', W * 0.5, oyy + 6);
+    status();
+  }
+
+  function addDonut(segs, ox, oy, sc, pts, pt, label){
+    var mesh = css('--mesh'), pos = css('--pos'), neg = css('--neg'), ink = css('--ink'), glow = css('--glow');
+    var NU = 36, NV = 16, du = M / NU, dv = M / NV, i, j;
+    // 網目（輪の向きに沿った細い線）
+    for (i = 0; i < NU; i++) for (j = 0; j < NV; j++){
+      var u0 = i * du, v0 = j * dv;
+      pushLine(segs, torus(u0, v0), torus(u0 + du, v0), ox, oy, sc, mesh, 0.8, 0.35);
+      pushLine(segs, torus(u0, v0), torus(u0, v0 + dv), ox, oy, sc, mesh, 0.8, 0.35);
+    }
+    // 道（番地の列。一歩ずつ短い弧に分けて置く）
+    for (i = 1; i < pts.length; i++){
+      var p = pts[i - 1], q = pts[i];
+      var du2 = q[0] - p[0], dv2 = q[1] - p[1];
+      if (du2 > M / 2) du2 -= M; if (du2 < -M / 2) du2 += M;
+      if (dv2 > M / 2) dv2 -= M; if (dv2 < -M / 2) dv2 += M;
+      var col = q[2] === 0 ? pos : neg;
+      var K = 3;
+      for (var k = 0; k < K; k++){
+        var a0 = torus(p[0] + du2 * k / K, p[1] + dv2 * k / K);
+        var a1 = torus(p[0] + du2 * (k + 1) / K, p[1] + dv2 * (k + 1) / K);
+        pushLine(segs, a0, a1, ox, oy, sc, col, 3.2, 1);
+      }
+    }
+    // 出発点と点
+    pushDot(segs, torus(B0, B0), ox, oy, sc, glow, 7);
+    pushDot(segs, torus(pt[0], pt[1]), ox, oy, sc, ink, 5);
+    segs.push({z: 99, draw: function(){
+      cx.fillStyle = css('--ink'); cx.font = '700 15px "BIZ UDPGothic", system-ui, sans-serif'; cx.textAlign = 'center';
+      cx.fillText(label, ox, oy + sc * 1.75);
+    }});
+  }
+  function pushLine(segs, A, B, ox, oy, sc, col, w, alpha){
+    var qa = view(A), qb = view(B), z = (qa[2] + qb[2]) / 2;
+    var sa = screen(qa, ox, oy, sc), sb = screen(qb, ox, oy, sc);
+    segs.push({z: z, draw: function(){
+      var depth = (z + 1.5) / 3;                    // 奥ほど薄く細く
+      cx.globalAlpha = alpha * (0.25 + 0.75 * depth);
+      cx.strokeStyle = col; cx.lineWidth = w * (0.6 + 0.6 * depth); cx.lineCap = 'round';
+      cx.beginPath(); cx.moveTo(sa[0], sa[1]); cx.lineTo(sb[0], sb[1]); cx.stroke();
+      cx.globalAlpha = 1;
+    }});
+  }
+  function pushDot(segs, A, ox, oy, sc, col, r){
+    var q = view(A), s = screen(q, ox, oy, sc);
+    segs.push({z: q[2] + 0.01, draw: function(){
+      cx.fillStyle = col; cx.beginPath(); cx.arc(s[0], s[1], r, 0, Math.PI * 2); cx.fill();
+    }});
+  }
+  // ---- 表示ここまで ----
+
+  function status(){
+    var lam = lams[cur], done = tick >= T + T;
+    var msg = 'λ = ' + lam.name + '　歩 ' + tick + ' / ' + (T + T) + '　右の点の番地 (' + right[0] + ', ' + right[1] + ')';
+    if (done){
+      var closed = right[0] === B0 && right[1] === B0;
+      msg += closed ? '　<em>出発点に着地して閉じた</em>' : '　<em class="no">着地しない（閉じない）</em>';
+    }
+    document.getElementById('st').innerHTML = msg;
+  }
+
+  function table(){
+    var lam = lams[cur], el = document.getElementById('coef');
+    var names = ['a₁b₁','a₁a₂','a₁b₂','b₁a₂','b₁b₂','a₂b₂'];
+    if (lam.open){ el.innerHTML = names.map(function(n){ return '<div><small>' + n + '</small><b>—</b></div>'; }).join(''); return; }
+    var m = lam.m, n = lam.n, v = [1, -n, m, -m, -n, times(m, m) + times(n, n)];
+    el.innerHTML = names.map(function(nm, i){ return '<div><small>' + nm + '</small><b>' + v[i] + '</b></div>'; }).join('');
+  }
+
+  function setOn(){
+    var bs = document.querySelectorAll('button[data-k]');
+    for (var i = 0; i < bs.length; i++) bs[i].classList.toggle('on', +bs[i].getAttribute('data-k') === cur);
+  }
+  document.querySelectorAll('button[data-k]').forEach(function(b){
+    b.addEventListener('click', function(){ cur = +b.getAttribute('data-k'); setOn(); setup(); });
+  });
+  var playBtn = document.getElementById('play');
+  playBtn.addEventListener('click', function(){ playing = !playing; playBtn.textContent = playing ? '止める' : '再生'; });
+  document.getElementById('step').addEventListener('click', function(){ advance(); draw(); });
+  document.getElementById('reset').addEventListener('click', setup);
+
+  // ドラッグで向きを変える
+  var drag = null;
+  cv.addEventListener('pointerdown', function(e){ drag = [e.clientX, e.clientY, yaw, pitch]; autoSpin = false; cv.setPointerCapture(e.pointerId); });
+  cv.addEventListener('pointermove', function(e){
+    if (!drag) return;
+    yaw = drag[2] + (e.clientX - drag[0]) * 0.01;
+    pitch = Math.max(0.1, Math.min(1.5, drag[3] + (e.clientY - drag[1]) * 0.01));
+    draw();
+  });
+  cv.addEventListener('pointerup', function(){ drag = null; });
+
+  var reduced = false;
+  try { reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches; } catch(e){}
+  if (reduced){ playing = false; autoSpin = false; playBtn.textContent = '再生'; }
+
+  var last = 0, hold = 0;
+  function loop(ts){
+    if (ts - last > 40){
+      last = ts;
+      var changed = false;
+      if (autoSpin){ yaw += 0.006; changed = true; }
+      if (playing){
+        if (tick < T + T){ advance(); changed = true; }
+        else if (++hold > 60){ hold = 0; cur = (cur + 1) % lams.length; setOn(); setup(); }
+      }
+      if (changed) draw();
+    }
+    requestAnimationFrame(loop);
+  }
+  setOn(); setup();
+  requestAnimationFrame(loop);
+  try { window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', draw); } catch(e){}
+})();
+</script>
